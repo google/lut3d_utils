@@ -164,6 +164,7 @@ class Lut3d(object):
       A binary message.
     """
     msg = io.BytesIO()
+    msg.write(struct.pack(">I", 0))  # version and flags = (0, 0)
     msg.write(self.connection_uuid)  # metadata_connection_uuid
     msg.write(b"lut3")  # production_metadata_type
     msg.write(struct.pack(">B", self.lut_size))
@@ -198,6 +199,10 @@ class Lut3d(object):
       print("Not sufficient data to read!")
       return False
     msg = io.BytesIO(src)
+    version_and_flags = struct.unpack(">I", msg.read(4))
+    if version_and_flags[0] != 0:
+      print(f"Invalid version and flags ({version_and_flags}), should be 0")
+      return False
     self.connection_uuid = msg.read(16)
     metadata_type = msg.read(4)
     if metadata_type != b"lut3":
@@ -290,9 +295,8 @@ def prmr_box(connection_uuid):
   prmr_leaf = mpeg.Box()
   prmr_leaf.name = mpeg.constants.TAG_PRMR
   prmr_leaf.header_size = 8
-  prmr_leaf.content_size = 16
-  prmr_leaf.contents = connection_uuid
-
+  prmr_leaf.contents = struct.pack(">I", 0) + connection_uuid
+  prmr_leaf.content_size = len(prmr_leaf.contents)
   return prmr_leaf
 
 
@@ -518,10 +522,13 @@ def parse_lut3d_mpeg4(input_file):
                       for vse_sub_element in stsd_sub_element.contents:
                         if vse_sub_element.name == mpeg.constants.TAG_PRMR:
                           position = vse_sub_element.content_start()
-                          in_fh.seek(position)
-                          ref_uuid.append(
-                              in_fh.read(vse_sub_element.content_size)
-                          )
+                          if vse_sub_element.content_size != 20:
+                            print(f"prmr box is incorrect size {vse_sub_element.content_size} != 20")
+                          else:
+                            in_fh.seek(position + 4)  # Seek past version and flags
+                            ref_uuid.append(
+                                in_fh.read(vse_sub_element.content_size - 4)
+                            )
         if parse:
           for sub_element in element.contents:
             if sub_element.name == mpeg.constants.TAG_UDTA:
