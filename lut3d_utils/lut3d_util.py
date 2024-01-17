@@ -65,6 +65,25 @@ class Lut3d(object):
     self.lut_size = 0
     self.lut_value = None
 
+
+  def to_3d_index(self, i):
+    """Convert the index into a 3d tuple with last dimension changing fastest."""
+    return (
+        (i // self.lut_size // self.lut_size),
+        (i // self.lut_size) % self.lut_size,
+        i % self.lut_size
+    )
+
+
+  def shuffle_indices(self, i):
+    """
+    Convert the 3d index i from last dimension changing fastest to first dimension
+    changing fastest (or vice versa).
+    """
+    inds = self.to_3d_index(i)
+    return (inds[2] * self.lut_size + inds[1]) * self.lut_size + inds[0]
+
+
   def read_from_cube_file(self, src):
     """Reads the lut_value from a lut3d file(.cube).
 
@@ -152,8 +171,8 @@ class Lut3d(object):
       )
       return False
     self.lut_size = lut3d_size
-    self.lut_value = data
-
+    self.lut_value = [data[self.shuffle_indices(i)]
+                      for i in range(self.lut_size**3)]
     in_fc.close()
     return True
 
@@ -267,7 +286,8 @@ class Lut3d(object):
       return False
 
     out_fc.write(f"LUT_3D_SIZE {self.lut_size}\n")
-    for i in range(0, len(self.lut_value) // 3):
+    for b_major_index in range(0, len(self.lut_value) // 3):
+      i = self.shuffle_indices(b_major_index)
       out_fc.write(
           "{0:.7f} {1:.7f} {2:.7f}\n".format(
               self.lut_value[i * 3],
