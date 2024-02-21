@@ -6,7 +6,7 @@ filing an issue on GitHub.*
 
 ## Production Metadata in MP4 (ISOBMFF)
 Production metadata is the information that may be used in a production process and is not required for playback or delivery.
-The 3D Look-Up-Table (3D LUT) is a kind of production metadata that may be used in a production process to map R’G’B’ colour spaces, including HDR to SDR video conversion.
+The 3D Look-Up-Table (3D LUT) is a kind of production metadata that may be used in a production process to map between R’G’B’ colour spaces, including HDR to SDR video conversion.
 Production metadata is stored in a new box, `prmd`, defined in this RFC, in
 an MP4 (ISOBMFF) container. The metadata is applicable to individual video
 tracks in the container. In order to allow the production metadata to be associated to a `VisualSampleEntry`,
@@ -49,7 +49,7 @@ A value of 0 for all elements of `metadata_connection_uuid` is valid but should 
 -  `lut_size` is the size of the 1st, 2nd, and 3rd dimension of the 3D LUT (defined by `lut_value`). The size shall not be zero.
 - `output_colour_primaries` specifies the output colour primaries associated with the output R’G’B’ of the LUT specifying the CIE 1931 xy chromaticity coordinates of the white point and the red, green, and blue primaries. The `output_colour_primaries` uses the code points defined for ColourPrimaries from [ITU-T H.273](https://www.itu.int/rec/T-REC-H.273).
 - `output_transfer_characteristics` specifies the output transfer characteristics associated with the output R’G’B’ of the LUT specifying the nonlinear transfer function characteristics used to translate between RGB colour space values and Y´CbCr values. The `output_transfer_characteristics` uses the code points defined for TransferCharacteristics from [ITU-T H.273](https://www.itu.int/rec/T-REC-H.273).
-- `lut_value` contains the static 3D look-up-table (LUT) for colour mapping. The LUT maps an input RGB colour to an output R′G′B′ colour (big-endian).
+- `lut_value` contains the static 3D look-up-table (LUT) for colour mapping. The LUT maps an input R'G'B' colour to an output R′G′B′ colour (big-endian). For YCbCr input video, the input R'G'B' obtained by applying the MatrixCoefficients associated to the input video stream.
 The `lut_value` shall contain the table entries for the LUT from the minimum to the maximum input values, with the third component index changing fastest (i.e. `lut_value[r_i][g_i][b_i][c_i] = data[(r_i * n * n + g_i * n + b_i) * 3 + c_i]`). The 3D LUT has dimensions lut_size-by-lut_size-by-lut_size-by-3.  
 To look up an input RGB (a vector with 3 elements in [0, 1]), which must be in full range, a conversion step could be needed to convert from the coded video format to RGB, subsequently RGB will be mapped to `[0, lut_size - 1]` (simply by multiplying RGB values by `lut_size - 1`) to find the entries. Since the mapped RGB (which is assumed to be in full range) is not always on a lattice point, the output values shall be interpolated, preferably using tetrahedral interpolation, as detailed in [Specification S-2014-006 Common LUT Format (CLF)](https://community.acescentral.com/uploads/short-url/iHX8xsDczlEg7l7OtIbJrbPvm4C.pdf)- Appendix B. To generate a 3D LUT, one way is to follow Section 5.2 of [Rep. ITU-R BT.2446-1](https://www.itu.int/dms_pub/itu-r/opb/rep/R-REP-BT.2446-1-2021-PDF-E.pdf).  
 The `lut_value` is a 1.15 fixed-point value (16-bit fixed point number, of which 15 rightmost bits are fractional) in the range [0, 2.0) (Note: this representation allows for the lut_value representation to have headroom above 1.0 to avoid potential 1-crossing interpolation distortion issues).
@@ -111,3 +111,10 @@ Here is an example box hierarchy for a file containing the PRMR/PRMD metadata:
       ...
     ... 
 ```
+
+The associated input video track will have MatrixCoefficients and TransferCharacteristics
+associated to it (via metadata in the elementary stream or metadata in a color parameter
+atom, `colr`). The input video signal should be transformed to R'G'B' space by applying
+the input matrix coefficients as defined in [ITU-T H.273](https://www.itu.int/rec/T-REC-H.273).
+The LUT data in the `prmd` box defines the transfomration of this R'G'B' data to an output
+space defined by `output_colour_primaries` and `output_transfer_characteristics`.
