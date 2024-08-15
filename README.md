@@ -39,3 +39,11 @@ python lut3d_utils -retrieve_lut3d -i ${input} -l ${lut3d_file}
 Checks if `input_file` contains 3D LUT metadata. If so, parses the metadata and
 prints it out. In addition, it saves the 3D LUT entries to `lut3d_file` as a
 ".cube" file.
+
+## Running unit tests
+
+
+```
+pytest lut3d_utils/lut3d_util_test.py 
+```
+

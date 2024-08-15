@@ -242,10 +242,11 @@ class Lut3d(object):
     if src_size - msg.tell() < 3 * pow(self.lut_size, 3) * 2:
       print("Not sufficient data to read!")
       return False
-    self.lut_value = [0] * 3 * pow(self.lut_size, 3)
+    self.lut_value = [[]] * pow(self.lut_size, 3)
     denum = 1 << FIXED_POINT_FRACTIONAL_BITS
-    for k in range(3 * pow(self.lut_size, 3)):
-      self.lut_value[k] = float(struct.unpack(">H", msg.read(2))[0]) / denum
+    for k in range(pow(self.lut_size, 3)):
+      self.lut_value[k] = [
+          float(struct.unpack(">H", msg.read(2))[0]) / denum for c in range(0, 3)]
     return True
 
   def print(self):
@@ -286,13 +287,13 @@ class Lut3d(object):
       return False
 
     out_fc.write(f"LUT_3D_SIZE {self.lut_size}\n")
-    for b_major_index in range(0, len(self.lut_value) // 3):
+    for b_major_index in range(0, len(self.lut_value)):
       i = self.shuffle_indices(b_major_index)
       out_fc.write(
           "{0:.7f} {1:.7f} {2:.7f}\n".format(
-              self.lut_value[i * 3],
-              self.lut_value[i * 3 + 1],
-              self.lut_value[i * 3 + 2],
+              self.lut_value[i][0],
+              self.lut_value[i][1],
+              self.lut_value[i][2],
           )
       )
     out_fc.close()
